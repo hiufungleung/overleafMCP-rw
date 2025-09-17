@@ -111,15 +111,118 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {},
           additionalProperties: false
         }
+      },
+      {
+        name: 'write_file',
+        description: 'Write or update a file in an Overleaf project',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            filePath: { type: 'string', description: 'Path to the file' },
+            content: { type: 'string', description: 'Content to write to the file' },
+            projectName: { type: 'string', description: 'Project name (default, sandbox, etc.)' },
+            gitToken: { type: 'string', description: 'Git token (optional, uses env var)' },
+            projectId: { type: 'string', description: 'Project ID (optional, uses env var)' }
+          },
+          required: ['filePath', 'content'],
+          additionalProperties: false
+        }
+      },
+      {
+        name: 'delete_file',
+        description: 'Delete a file from an Overleaf project',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            filePath: { type: 'string', description: 'Path to the file to delete' },
+            projectName: { type: 'string', description: 'Project name (default, sandbox, etc.)' },
+            gitToken: { type: 'string', description: 'Git token (optional, uses env var)' },
+            projectId: { type: 'string', description: 'Project ID (optional, uses env var)' }
+          },
+          required: ['filePath'],
+          additionalProperties: false
+        }
+      },
+      {
+        name: 'commit_changes',
+        description: 'Commit all changes to the repository',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', description: 'Commit message' },
+            projectName: { type: 'string', description: 'Project name (default, sandbox, etc.)' },
+            gitToken: { type: 'string', description: 'Git token (optional, uses env var)' },
+            projectId: { type: 'string', description: 'Project ID (optional, uses env var)' }
+          },
+          required: ['message'],
+          additionalProperties: false
+        }
+      },
+      {
+        name: 'push_changes',
+        description: 'Push committed changes to Overleaf',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            projectName: { type: 'string', description: 'Project name (default, sandbox, etc.)' },
+            gitToken: { type: 'string', description: 'Git token (optional, uses env var)' },
+            projectId: { type: 'string', description: 'Project ID (optional, uses env var)' }
+          },
+          additionalProperties: false
+        }
+      },
+      {
+        name: 'git_status',
+        description: 'Get git status of the project',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            projectName: { type: 'string', description: 'Project name (default, sandbox, etc.)' },
+            gitToken: { type: 'string', description: 'Git token (optional, uses env var)' },
+            projectId: { type: 'string', description: 'Project ID (optional, uses env var)' }
+          },
+          additionalProperties: false
+        }
       }
     ]
   };
 });
 
+// Validation helper functions
+function validateFilePath(filePath) {
+  if (!filePath || typeof filePath !== 'string') {
+    throw new Error('filePath must be a non-empty string');
+  }
+  if (filePath.includes('..') || filePath.startsWith('/')) {
+    throw new Error('filePath must be relative and cannot contain ".."');
+  }
+  return filePath.trim();
+}
+
+function validateContent(content) {
+  if (typeof content !== 'string') {
+    throw new Error('content must be a string');
+  }
+  if (content.length > 1000000) { // 1MB limit
+    throw new Error('content exceeds maximum size of 1MB');
+  }
+  return content;
+}
+
+function validateCommitMessage(message) {
+  if (!message || typeof message !== 'string') {
+    throw new Error('commit message must be a non-empty string');
+  }
+  if (message.length > 500) {
+    throw new Error('commit message must be less than 500 characters');
+  }
+  return message.trim();
+}
+
 // Tool execution
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  
+
   try {
     // Get project information
     function getProjectConfig(projectName) {
@@ -197,6 +300,55 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           }]
         };
       
+      case 'write_file':
+        const validatedFilePath = validateFilePath(args.filePath);
+        const validatedContent = validateContent(args.content);
+        await client.writeFile(validatedFilePath, validatedContent);
+        return {
+          content: [{
+            type: 'text',
+            text: `✅ File '${validatedFilePath}' written successfully (${validatedContent.length} characters)`
+          }]
+        };
+
+      case 'delete_file':
+        const fileToDelete = validateFilePath(args.filePath);
+        await client.deleteFile(fileToDelete);
+        return {
+          content: [{
+            type: 'text',
+            text: `✅ File '${fileToDelete}' deleted successfully`
+          }]
+        };
+
+      case 'commit_changes':
+        const validatedMessage = validateCommitMessage(args.message);
+        const commitResult = await client.commit(validatedMessage);
+        return {
+          content: [{
+            type: 'text',
+            text: `✅ Commit successful:\n${commitResult}`
+          }]
+        };
+
+      case 'push_changes':
+        const pushResult = await client.push();
+        return {
+          content: [{
+            type: 'text',
+            text: `✅ Push successful:\n${pushResult}`
+          }]
+        };
+
+      case 'git_status':
+        const statusResult = await client.status();
+        return {
+          content: [{
+            type: 'text',
+            text: `📊 Git Status:\n${statusResult}`
+          }]
+        };
+
       case 'status_summary':
         // Project status summary
         const allFiles = await client.listFiles('.tex');
@@ -232,10 +384,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error(`Unknown tool: ${name}`);
     }
   } catch (error) {
+    // Enhanced error handling with better messages
+    let errorMessage = error.message;
+    let errorType = 'Error';
+
+    // Categorize errors for better user experience
+    if (error.message.includes('Authentication') || error.message.includes('403')) {
+      errorType = 'Authentication Error';
+      errorMessage = `${error.message}\n\n💡 Tip: Check your Git token in projects.json`;
+    } else if (error.message.includes('timeout')) {
+      errorType = 'Timeout Error';
+      errorMessage = `${error.message}\n\n💡 Tip: Check your network connection`;
+    } else if (error.message.includes('No project configuration')) {
+      errorType = 'Configuration Error';
+      errorMessage = `${error.message}\n\n💡 Tip: Set up projects.json with your Overleaf credentials`;
+    } else if (error.message.includes('validation') || error.message.includes('must be')) {
+      errorType = 'Validation Error';
+    }
+
     return {
       content: [{
         type: 'text',
-        text: `Error: ${error.message}`
+        text: `❌ ${errorType}: ${errorMessage}`
       }],
       isError: true
     };

@@ -3,3 +3,4 @@ temp/
 projects.json
 .env
 *.log
+CLAUDE.md

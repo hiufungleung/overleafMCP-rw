@@ -1,8 +1,12 @@
-# Overleaf MCP Server
+# Overleaf MCP Server with WRITE Functionality
 
-An MCP (Model Context Protocol) server that provides access to Overleaf projects via Git integration. This allows Claude and other MCP clients to read LaTeX files, analyze document structure, and extract content from Overleaf projects.
+An MCP (Model Context Protocol) server that provides access to Overleaf projects via Git integration. This allows Claude and other MCP clients to read and write LaTeX files, analyze document structure, extract content, and manage Overleaf projects with full Git workflow support.
+
+**Note:** All functionality requires an Overleaf membership with Git access (available with free trial or paid subscription).
 
 ## Features
+
+### Read Operations
 
 - 📄 **File Management**: List and read files from Overleaf projects
 - 📋 **Document Structure**: Parse LaTeX sections and subsections
@@ -10,20 +14,31 @@ An MCP (Model Context Protocol) server that provides access to Overleaf projects
 - 📊 **Project Summary**: Get overview of project status and structure
 - 🏗️ **Multi-Project Support**: Manage multiple Overleaf projects
 
+### Write Operations *(Enhanced functionality)*
+
+- ✏️ **File Writing**: Create and update LaTeX files
+- 🗑️ **File Deletion**: Remove files from projects
+- 📝 **Git Integration**: Commit changes with custom messages
+- 🚀 **Sync to Overleaf**: Push changes back to Overleaf
+- 📈 **Git Status**: Monitor repository state and changes
+
 ## Installation
 
 1. Clone this repository
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Set up your projects configuration:
+
    ```bash
    cp projects.example.json projects.json
    ```
 
 4. Edit `projects.json` with your Overleaf credentials:
+
    ```json
    {
      "projects": {
@@ -38,11 +53,17 @@ An MCP (Model Context Protocol) server that provides access to Overleaf projects
 
 ## Getting Overleaf Credentials
 
-1. **Git Token**: 
+**Important:** All operations require an Overleaf membership with Git access. This is available with:
+
+- Free trial (limited time)
+- Paid subscription plans
+
+1. **Git Token**:
    - Go to Overleaf Account Settings → Git Integration
    - Click "Create Token"
+   - **Note:** Git integration requires an Overleaf membership
 
-2. **Project ID**: 
+2. **Project ID**:
    - Open your Overleaf project
    - Find it in the URL: `https://www.overleaf.com/project/[PROJECT_ID]`
 
@@ -71,37 +92,88 @@ Restart Claude Desktop after configuration.
 
 ## Available Tools
 
-### `list_projects`
+### Read Operations
+
+#### `list_projects`
+
 List all configured projects.
 
-### `list_files`
+#### `list_files`
+
 List files in a project (default: .tex files).
+
 - `extension`: File extension filter (optional)
 - `projectName`: Project identifier (optional, defaults to "default")
 
-### `read_file`
+#### `read_file`
+
 Read a specific file from the project.
+
 - `filePath`: Path to the file (required)
 - `projectName`: Project identifier (optional)
 
-### `get_sections`
+#### `get_sections`
+
 Get all sections from a LaTeX file.
+
 - `filePath`: Path to the LaTeX file (required)
 - `projectName`: Project identifier (optional)
 
-### `get_section_content`
+#### `get_section_content`
+
 Get content of a specific section.
+
 - `filePath`: Path to the LaTeX file (required)
 - `sectionTitle`: Title of the section (required)
 - `projectName`: Project identifier (optional)
 
-### `status_summary`
+#### `status_summary`
+
 Get a comprehensive project status summary.
+
+- `projectName`: Project identifier (optional)
+
+### Write Operations
+
+#### `write_file`
+
+Write or update a file in the project.
+
+- `filePath`: Path to the file (required)
+- `content`: Content to write to the file (required)
+- `projectName`: Project identifier (optional)
+
+#### `delete_file`
+
+Delete a file from the project.
+
+- `filePath`: Path to the file to delete (required)
+- `projectName`: Project identifier (optional)
+
+#### `commit_changes`
+
+Commit all changes to the repository.
+
+- `message`: Commit message (required)
+- `projectName`: Project identifier (optional)
+
+#### `push_changes`
+
+Push committed changes to Overleaf.
+
+- `projectName`: Project identifier (optional)
+
+#### `git_status`
+
+Get git status of the project.
+
 - `projectName`: Project identifier (optional)
 
 ## Usage Examples
 
-```
+### Read Operations
+
+```bash
 # List all projects
 Use the list_projects tool
 
@@ -118,6 +190,25 @@ Use get_section_content with filePath: "main.tex" and sectionTitle: "Introductio
 Use get_sections with filePath: "main.tex"
 ```
 
+### Write Operations
+
+```bash
+# Create or update a file
+Use write_file with filePath: "new_chapter.tex" and content: "\\section{New Chapter}\nContent here..."
+
+# Delete a file
+Use delete_file with filePath: "old_file.tex"
+
+# Check what has changed
+Use git_status tool
+
+# Commit your changes
+Use commit_changes with message: "Add new chapter and remove old file"
+
+# Push changes to Overleaf
+Use push_changes tool
+```
+
 ## Multi-Project Usage
 
 To work with multiple projects, add them to `projects.json`:
@@ -131,7 +222,7 @@ To work with multiple projects, add them to `projects.json`:
       "gitToken": "token-1"
     },
     "paper2": {
-      "name": "Second Paper", 
+      "name": "Second Paper",
       "projectId": "project-id-2",
       "gitToken": "token-2"
     }
@@ -140,7 +231,8 @@ To work with multiple projects, add them to `projects.json`:
 ```
 
 Then specify the project in tool calls:
-```
+
+```bash
 Use get_section_content with projectName: "paper2", filePath: "main.tex", sectionTitle: "Methods"
 ```
 
@@ -161,6 +253,11 @@ OverleafMCP/
 - `projects.json` is gitignored to protect your credentials
 - Never commit real project IDs or Git tokens
 - Use the provided `projects.example.json` as a template
+
+## Attribution
+
+This project is forked from the 
+[mjyoo2/OverleafMCP](https://github.com/mjyoo2/OverleafMCP). The original implementation provided read-only functionality. This fork adds enhanced write operations including file creation, editing, deletion, and full Git workflow support (commit and push to Overleaf).
 
 ## License
 
