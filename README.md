@@ -25,19 +25,20 @@ An MCP (Model Context Protocol) server that provides access to Overleaf projects
 ## Installation
 
 1. Clone this repository
-2. Install dependencies:
+2. Ensure [Node.js](https://nodejs.org/en/download) has been installed on your machine.
+3. Install dependencies:
 
    ```bash
    npm install
    ```
 
-3. Set up your projects configuration:
+4. Set up your projects configuration:
 
    ```bash
    cp projects.example.json projects.json
    ```
 
-4. Edit `projects.json` with your Overleaf credentials:
+5. Edit `projects.json` with your Overleaf credentials:
 
    ```json
    {
@@ -71,8 +72,11 @@ An MCP (Model Context Protocol) server that provides access to Overleaf projects
 
 Add to your Claude Desktop configuration file:
 
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+  - Be careful of the blankspace in `Application Support`.
+
 **Linux**: `~/.config/claude/claude_desktop_config.json`
 
 ```json
